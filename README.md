@@ -1,6 +1,6 @@
 # [JS-Workshop](https://github.com/ClojureTO/JS-Workshop)
 
-## Workshop Prerequisites
+## Before the Workshop
 
 Please make sure that you have a copy of the JDK and Leiningen build tool setup to follow along with the workshop.
 You can follow installation instructions in the links below:
@@ -18,7 +18,9 @@ Run the following commands to create a new project and run it to ensure that the
 
 If the project starts up successfully, then you should have a browser window open at `localhost:3449/index.html`.
 
-## Workshop
+## During the Workshop
+
+This is a comprehensive guide to the workshop itself, for those playing along from home!
 
 We'll update project dependencies in `project.clj` to look as follows:
 
