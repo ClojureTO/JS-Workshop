@@ -7,16 +7,18 @@
 
 (defonce posts (r/atom nil))
 
+(defn find-posts-with-preview [posts]
+  (filter #(= (:post_hint %) "image") posts))
+
 (defn load-posts []
   (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=10"
             {:handler         #(->> (get-in % [:data :children])
                                     (map :data)
+                                    (find-posts-with-preview)
                                     (reset! posts))
              :response-format :json
              :keywords?       true}))
 
-(defn find-posts-with-preview [posts]
-  (filter #(= (:post_hint %) "image") posts))
 
 ;; -------------------------
 ;; Views
@@ -33,7 +35,7 @@
 (defn display-posts [posts]
   (when-not (empty? posts)
     [:div
-     (for [posts-row (->> posts (find-posts-with-preview) (partition-all 3))]
+     (for [posts-row (partition-all 3 posts)]
        ^{:key posts-row}
        [:div.row
         (for [post posts-row]

@@ -10,7 +10,7 @@
       {:type    "bar"
        :data    {:labels   (map :title data)
                  :datasets [{:label "votes"
-                             :data  (map :ups data)}]}
+                             :data  (map :score data)}]}
        :options {:scales {:xAxes [{:display false}]}}})))
 
 (defn destroy-chart [chart]

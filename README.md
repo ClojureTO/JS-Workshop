@@ -109,7 +109,7 @@ Let's start by creating a container to hold the results:
 
 The `atom` is a container for mutable data. We'll initialize it with a `nil` value.
 
-Next, we'll require the `ajax.core` namespace and write a function that will load posts from the `http://www.reddit.com/r/Catloaf.json?sort=new&limit=9` URL,
+Next, we'll require the `ajax.core` namespace and add a couple of functions that will load posts from the `http://www.reddit.com/r/Catloaf.json?sort=new&limit=9` URL, filter out the ones with images,
 and save them in the `posts` atom:
 
 ```clojure
@@ -120,16 +120,20 @@ and save them in the `posts` atom:
 
 (defonce posts (r/atom nil))
 
+(defn find-posts-with-preview [posts]
+  (filter #(= (:post_hint %) "image") posts))
+
 (defn load-posts []
-  (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=9"
+  (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=10"
             {:handler         #(->> (get-in % [:data :children])
                                     (map :data)
+                                    (find-posts-with-preview)
                                     (reset! posts))
              :response-format :json
              :keywords?       true}))
 ```
 
-The function loads the JSON data and converts it to a Clojure data structure. We pass the `ajax/GET` function the URL and
+The `load-posts` function loads the JSON data and converts it to a Clojure data structure. We pass the `ajax/GET` function the URL and
 a map of options. The options contain the `:handler` key pointing to the function that should be called to handle the successful response,
 the `:response-format` key that hints that the response type is JSON, and `:keywords?` hint indicating that we would like to convert JSON
 string keys into Clojure keywords for maps.
@@ -145,7 +149,7 @@ The top level data structure is a map that contains a key called `:data`, this k
  called `:data` that contains the data for the post.
 
 Our `:handler` function grabs the collection of posts, and maps across them to get the `:data` key containing the information about
-each post. After we process the original response data, we reset the `posts` atom with the result.
+each post. It then calls the `find-posts-with-preview` function to filter out posts without images. After we process the original response data, we reset the `posts` atom with the result.
 
 We can test our function in the Figwheel REPL by running the following commands:
 
@@ -234,13 +238,10 @@ Baking-soda library wraps reactstrap React components and turns them into Reagen
 Now that we can render a single post nicely, let's write a function that will render a multiple posts:
 
  ```clojure
- (defn find-posts-with-preview [posts]
-   (filter #(= (:post_hint %) "image") posts))
-
  (defn display-posts [posts]
    (when-not (empty? posts)
      [:div
-      (for [posts-row (->> posts (find-posts-with-preview) (partition-all 3))]
+      (for [posts-row (partition-all 3 posts)]
         ^{:key posts-row}
         [:div.row
          (for [post posts-row]
@@ -250,8 +251,7 @@ Now that we can render a single post nicely, let's write a function that will re
 
 The function will accept a collection of posts as its parameter. It will then check whether the collection is empty.
 
-When the `posts` are not empty, we'll find ones that contain images, then partition them into groups of three.
-
+When the `posts` are not empty, we'll partition them into groups of three.
 We'll create a Bootstrap row for each group and pass the posts in the row to the `display-post` function we wrote earlier.
 
 Note that we're using the `^{:key posts-row}` notation for dynamic collections elements. This provides Reagent with a unique identifier for each element to decide when to repaint it efficiently. If the key was omitted, then Reagent would repaint all elements whenever any of the elements need repainting.
@@ -378,7 +378,7 @@ Next, we'll write a function that calls Chart.js to render given data in a DOM n
       {:type    "bar"
        :data    {:labels   (map :title data)
                  :datasets [{:label "votes"
-                             :data  (map :ups data)}]}
+                             :data  (map :score data)}]}
        :options {:scales {:xAxes [{:display false}]}}})))
 ```
 
