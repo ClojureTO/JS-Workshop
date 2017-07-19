@@ -1,7 +1,6 @@
 (ns reddit-viewer.core
   (:require
     [ajax.core :as ajax]
-    [baking-soda.core :as b]
     [reagent.core :as r]
     [reddit-viewer.chart :as chart]))
 
@@ -24,12 +23,11 @@
 ;; Views
 
 (defn display-post [{:keys [permalink subreddit title score url]}]
-  [b/Card
-   {:class "m-2"}
-   [b/CardBlock
-    [b/CardTitle
+  [:div.card.m-2
+   [:div.card-block
+    [:h4.card-title
      [:a {:href (str "http://reddit.com" permalink)} title " "]]
-    [:div [b/Badge {:color "info"} subreddit " score " score]]
+    [:div [:span.badge.badge-info {:color "info"} subreddit " score " score]]
     [:img {:width "300px" :src url}]]])
 
 (defn display-posts [posts]
@@ -44,22 +42,21 @@
 
 (defn sort-posts [title sort-key]
   (when-not (empty? @posts)
-    [b/Button
+    [:button.btn.btn-secondary
      {:on-click #(swap! posts (partial sort-by sort-key))}
      (str "sort posts by " title)]))
 
 (defn navitem [title view id]
-  [b/NavItem
-   {:className (when (= id @view) "active")}
-   [b/NavLink
+  [:li.nav-item
+   {:class-name (when (= id @view) "active")}
+   [:a.nav-link
     {:href     "#"
      :on-click #(reset! view id)}
     title]])
 
 (defn navbar [view]
-  [b/Navbar
-   {:className "navbar-toggleable-md navbar-light bg-faded"}
-   [b/Nav
+  [:nav.navbar.navbar-toggleable-md.navbar-light.bg-faded
+   [:ul.navbar-nav.mr-auto.nav
     {:className "navbar-nav mr-auto"}
     [navitem "Posts" view :posts]
     [navitem "Chart" view :chart]]])
@@ -68,14 +65,13 @@
   (r/with-let [view (r/atom :posts)]
     [:div
      [navbar view]
-     [b/Card
-      [b/CardBlock
-       [b/ButtonGroup
-        [sort-posts "score" :score]
-        [sort-posts "comments" :num_comments]]
-       (case @view
-         :chart [chart/chart-posts-by-votes posts]
-         :posts [display-posts @posts])]]]))
+     [:div.card>div.card-block
+      [:div.btn-group
+       [sort-posts "score" :score]
+       [sort-posts "comments" :num_comments]]
+      (case @view
+        :chart [chart/chart-posts-by-votes posts]
+        :posts [display-posts @posts])]]))
 
 ;; -------------------------
 ;; Initialize app

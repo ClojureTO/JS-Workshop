@@ -27,17 +27,9 @@ We'll update project dependencies in `project.clj` to look as follows:
 ```clojure
 :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
                  [org.clojure/clojurescript "1.9.671" :scope "provided"]
-                 [reagent "0.7.0"
-                  :exclusions [cljsjs/react-dom
-                               cljsjs/react-dom-server]]
-                 [cljsjs/react-with-addons "15.4.2-2"]
-                 [cljsjs/react-dom "15.4.2-2"
-                  :exclusions [cljsjs/react]]
-                 [baking-soda "0.1.3"
-                  :exclusions [cljsjs/react]]
+                 [reagent "0.7.0"]
                  [cljsjs/chartjs "2.5.0-0"]
-                 [cljs-ajax "0.6.0"]
-                 [data-frisk-reagent "0.4.5"]]
+                 [cljs-ajax "0.6.0"]]
 ```
 
 Next, let's replace the generated CSS link with the Bootstrap CSS in the `public/index.html` file:
@@ -206,34 +198,20 @@ We can see that the image disappears on the page once the contents of the atom h
 
 We should be seeing the cat picture once again as the `display-post` component is repainted with new data.
 
-#### Using React components
+#### Working with HTML
 
-We've now seen that the data is being loaded, but it's not terribly nice to look at. Let's render it in a better way using baking-soda library components.
-
-First, let's reference the library in the namespace declaration:
-
-```clojure
-(ns reddit-viewer.core
-  (:require
-    [ajax.core :as ajax]
-    [baking-soda.core :as b]
-    [reagent.core :as r]))
-```
-
-Next, let's update the `display-post` component function as follows:
+We've now seen that the data is being loaded, but it's not terribly nice to look at. Let's render it in a better way using Bootstrap CSS.
+We'll update the `display-post` component function as follows:
 
 ```clojure
 (defn display-post [{:keys [permalink subreddit title score url]}]
-  [b/Card
-   {:class "m-2"}
-   [b/CardBlock
-    [b/CardTitle
+  [:div.card.m-2
+   [:div.card-block
+    [:h4.card-title
      [:a {:href (str "http://reddit.com" permalink)} title " "]]
-    [:div [b/Badge {:color "info"} subreddit " score " score]]
+    [:div [:span.badge.badge-info {:color "info"} subreddit " score " score]]
     [:img {:width "300px" :src url}]]])
 ```
-
-Baking-soda library wraps reactstrap React components and turns them into Reagent components. We can use those the same way we used the `data-viewer` component function earlier.
 
 Now that we can render a single post nicely, let's write a function that will render a multiple posts:
 
@@ -260,69 +238,9 @@ With that in place, we can update the `home-page` component to render the posts:
 
 ```clojure
 (defn home-page []
-  [b/Card
-   [b/CardBlock
-    [display-posts @posts]]])
+  [:div.card>div.card-block
+   [display-posts @posts]])
 ```
-
-#### Managing local state within components
-
-Let's write another function to help us debug posts. This function will have a button that will toggle the pretty printed post map when clicked:
-
-```clojure
-(defn inspect [data]
-  (let [open? (r/atom false)]
-    (fn []
-      [:div.m-2
-       [b/Button
-        {:color    "link"
-         :on-click #(swap! open? not)}
-        (if @open? "collapse" "expand")]
-       [b/Collapse
-        {:isOpen @open?}
-        [b/Card
-         [b/CardBlock
-          [:pre (-> @posts pprint with-out-str)]]]]])))
-```
-
-Notice that we return an anonymous function from inside the `let` statement. This is a Reagent mechanic for creating local state within components.
-
-If the inner function was not present, then the top level function would be called each time the component was repainted and the `let` statement would be reinitialized.
-
-When a component returns a function as the result, Reagent knows to call that function when subsequent calls to that component occur.
-
- Since this is a common operation, Reagent provides a helper macro called `with-let`. We can rewrite the above function using it as follows:
-
- ```clojure
-(defn inspect [data]
-  (r/with-let [open? (r/atom false)]
-    [:div.m-2
-     [b/Button
-      {:color    "link"
-       :on-click #(swap! open? not)}
-      (if @open? "collapse" "expand")]
-     [b/Collapse
-      {:isOpen @open?}
-      [b/Card
-       [b/CardBlock
-        [:pre (-> @posts pprint with-out-str)]]]]]))
- ```
-
-We'll now update the `display-post` function to add the inspect component:
-
-```clojure
-(defn display-post [{:keys [permalink subreddit title score url] :as post}]
-  [b/Card
-   {:class "m-2"}
-   [b/CardBlock
-    [b/CardTitle
-     [:a {:href (str "http://reddit.com" permalink)} title " "]]
-    [b/Badge {:color "info"} subreddit " score " score]
-    [:img {:width "300px" :src url}]
-    [inspect post]]])
-```
-
-We now have a way to inspect the map description of each post for troubleshooting.
 
 ### Task 3: Manipulating the data
 
@@ -333,7 +251,7 @@ We're able to load the posts, and have a UI for render them. Let's take a look a
 ```clojure
 (defn sort-posts [title sort-key]
   (when-not (empty? @posts)
-    [b/Button
+    [:button.btn.btn-secondary
      {:on-click #(swap! posts (partial sort-by sort-key))}
      (str "sort posts by " title)]))
 ```
@@ -344,15 +262,14 @@ Let's add a couple of buttons to the `home-page` that will allow us to sort post
 
 ```clojure
 (defn home-page []
-  [b/Card
-   [b/CardBlock
-    [b/ButtonGroup
-     [sort-posts "score" :score]
-     [sort-posts "comments" :num_comments]]
-    [display-posts @posts]]])
+  [:div.card>div.card-block
+   [:div.btn-group
+    [sort-posts "score" :score]
+    [sort-posts "comments" :num_comments]]
+   [display-posts @posts]])
 ```
 
-Not that as we're updating the UI, we're retaining the state of the application. As new components are added, the `posts` atom state is retained. We can modify the way the UI looks without having to reload the application to see the changes.
+Note that as we're updating the UI, we're retaining the state of the application. As new components are added, the `posts` atom state is retained. We can modify the way the UI looks without having to reload the application to see the changes.
 
 ### Task 4: JavaScript interop
 
@@ -453,7 +370,6 @@ With that in place, we can navigate back to the `reddit-viewer.core` namespace, 
 (ns reddit-viewer.core
   (:require
     [ajax.core :as ajax]
-    [baking-soda.core :as b]
     [reagent.core :as r]
     [reddit-viewer.chart :as chart]))
 ```
@@ -462,53 +378,84 @@ We'll now update the `home-page` component to display the chart:
 
 ```clojure
 (defn home-page []
-  [b/Card
-   [b/CardBlock
-    [b/ButtonGroup
-     [sort-posts "score" :score]
-     [sort-posts "comments" :num_comments]]
-    [chart/chart-posts-by-votes posts]
-    [display-posts @posts]]])
+  [:div.card>div.card-block
+   [:div.btn-group
+    [sort-posts "score" :score]
+    [sort-posts "comments" :num_comments]]
+   [chart/chart-posts-by-votes posts]
+   [display-posts @posts]])
 ```
 
 We should now see the chart rendered, and it should update when we change the sort order of our data using the `score` and `comment` sorting buttons.
 
-### Task 5: Adding a navbar
+### Task 5: Managing local state within components
 
-As a final touch, let's add a navbar to separate the posts and the chart into separate views:
+As a final touch, let's add a navbar to separate the posts and the chart into separate views. We'll start by adding a `navitem` function that creates a navigation link given a title, an atom containing the currently selected view, and the id of the nav item:
 
 ```clojure
 (defn navitem [title view id]
-  [b/NavItem
-   {:className (when (= id @view) "active")}
-   [b/NavLink
+  [:li.nav-item
+   {:class-name (when (= id @view) "active")}
+   [:a.nav-link
     {:href     "#"
      :on-click #(reset! view id)}
     title]])
+```
 
+The component checks whether the current id in the view matches the item id in order to decide whether its class should be set to active. When it's clicked, the component will reset the `view` atom to its id.
+
+We can now create a Bootstrap navbar with links to posts and the chart:
+
+```clojure
 (defn navbar [view]
-  [b/Navbar
-   {:className "navbar-toggleable-md navbar-light bg-faded"}
-   [b/Nav
+  [:nav.navbar.navbar-toggleable-md.navbar-light.bg-faded
+   [:ul.navbar-nav.mr-auto.nav
     {:className "navbar-nav mr-auto"}
     [navitem "Posts" view :posts]
     [navitem "Chart" view :chart]]])
+```
 
+Finally, we'll update the home page to use the `navbar` component. The home page will now need to track a local state to know what view it needs to display.
+This is accomplished by creating a local atom called `view`:
+
+```clojure
+(defn home-page []
+  (let [view (r/atom :posts)]
+    (fn []
+      [:div
+       [navbar view]
+       [:div.card>div.card-block
+        [:div.btn-group
+         [sort-posts "score" :score]
+         [sort-posts "comments" :num_comments]]
+        (case @view
+          :chart [chart/chart-posts-by-votes posts]
+          :posts [display-posts @posts])]])))
+```
+
+Notice that we return an anonymous function from inside the `let` statement. This is a Reagent mechanic for creating local state within components.
+
+If the inner function was not present, then the top level function would be called each time the component was repainted and the `let` statement would be reinitialized.
+
+When a component returns a function as the result, Reagent knows to call that function when subsequent calls to that component occur.
+
+ Since this is a common operation, Reagent provides a helper macro called `with-let`. We can rewrite the above function using it as follows:
+
+```clojure
 (defn home-page []
   (r/with-let [view (r/atom :posts)]
     [:div
      [navbar view]
-     [b/Card
-      [b/CardBlock
-       [b/ButtonGroup
-        [sort-posts "score" :score]
-        [sort-posts "comments" :num_comments]]
-       (case @view
-         :chart [chart/chart-posts-by-votes posts]
-         :posts [display-posts @posts])]]]))
+     [:div.card>div.card-block
+      [:div.btn-group
+       [sort-posts "score" :score]
+       [sort-posts "comments" :num_comments]]
+      (case @view
+        :chart [chart/chart-posts-by-votes posts]
+        :posts [display-posts @posts])]]))
 ```
 
-
+That completes all the functionality we set out to add to our application. The only thing left to do is to compile it for production use.
 
 ## Compiling for release
 
@@ -524,8 +471,5 @@ This will produce a single minified JavaScript file called `public/js/app.js` th
 
 * [Chart.js](http://www.chartjs.org/) - used to generate the bar chart
 * [cljs-ajax](https://github.com/JulianBirch/cljs-ajax) - used to fetch data from Reddit
-* [data-frisk-reagent](https://github.com/Odinodin/data-frisk-reagent) - used to visualize the data
-* [reactstrap](http://reactstrap.github.io/components) via
-[baking-soda](https://github.com/gadfly361/baking-soda) - Bootstrap UI components
 * [Reagent](reagent-project.github.io) - ClojureScript interface for React
 

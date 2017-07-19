@@ -6,14 +6,7 @@
 
   :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
                  [org.clojure/clojurescript "1.9.671" :scope "provided"]
-                 [reagent "0.7.0"
-                  :exclusions [cljsjs/react-dom
-                               cljsjs/react-dom-server]]
-                 [cljsjs/react-with-addons "15.4.2-2"]
-                 [cljsjs/react-dom "15.4.2-2"
-                  :exclusions [cljsjs/react]]
-                 [baking-soda "0.1.3"
-                  :exclusions [cljsjs/react]]
+                 [reagent "0.7.0"]
                  [cljsjs/chartjs "2.5.0-0"]
                  [cljs-ajax "0.6.0"]]
 
