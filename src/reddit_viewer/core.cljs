@@ -1,33 +1,21 @@
 (ns reddit-viewer.core
   (:require
-    [ajax.core :as ajax]
     [reagent.core :as r]
-    [reddit-viewer.chart :as chart]))
-
-(defonce posts (r/atom nil))
-
-(defn find-posts-with-preview [posts]
-  (filter #(= (:post_hint %) "image") posts))
-
-(defn load-posts []
-  (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=10"
-            {:handler         #(->> (get-in % [:data :children])
-                                    (map :data)
-                                    (find-posts-with-preview)
-                                    (reset! posts))
-             :response-format :json
-             :keywords?       true}))
-
+    [reddit-viewer.chart :as chart]
+    [reddit-viewer.events]
+    [re-frame.core :as rf]))
 
 ;; -------------------------
 ;; Views
 
-(defn display-post [{:keys [permalink subreddit title score url]}]
+(defn display-post [{:keys [permalink num_comments subreddit title score url]}]
   [:div.card.m-2
    [:div.card-block
     [:h4.card-title
      [:a {:href (str "http://reddit.com" permalink)} title " "]]
-    [:div [:span.badge.badge-info {:color "info"} subreddit " score " score]]
+    [:div [:span.badge.badge-info
+           {:color "info"}
+           subreddit " score " score " / comments " num_comments]]
     [:img {:width "300px" :src url}]]])
 
 (defn display-posts [posts]
@@ -41,17 +29,16 @@
           [:div.col-4 [display-post post]])])]))
 
 (defn sort-posts [title sort-key]
-  (when-not (empty? @posts)
-    [:button.btn.btn-secondary
-     {:on-click #(swap! posts (partial sort-by sort-key))}
-     (str "sort posts by " title)]))
+  [:button.btn.btn-secondary
+   {:on-click #(rf/dispatch [:sort-posts sort-key])}
+   (str "sort posts by " title)])
 
 (defn navitem [title view id]
   [:li.nav-item
-   {:class-name (when (= id @view) "active")}
+   {:class-name (when (= id view) "active")}
    [:a.nav-link
     {:href     "#"
-     :on-click #(reset! view id)}
+     :on-click #(rf/dispatch [:select-view id])}
     title]])
 
 (defn navbar [view]
@@ -62,16 +49,16 @@
     [navitem "Chart" view :chart]]])
 
 (defn home-page []
-  (r/with-let [view (r/atom :posts)]
+  (let [view @(rf/subscribe [:view])]
     [:div
      [navbar view]
      [:div.card>div.card-block
       [:div.btn-group
        [sort-posts "score" :score]
        [sort-posts "comments" :num_comments]]
-      (case @view
-        :chart [chart/chart-posts-by-votes posts]
-        :posts [display-posts @posts])]]))
+      (case view
+        :chart [chart/chart-posts-by-votes]
+        :posts [display-posts @(rf/subscribe [:posts])])]]))
 
 ;; -------------------------
 ;; Initialize app
@@ -80,5 +67,6 @@
   (r/render [home-page] (.getElementById js/document "app")))
 
 (defn init! []
-  (mount-root)
-  (load-posts))
+  (rf/dispatch-sync [:initialize-db])
+  (rf/dispatch [:load-posts])
+  (mount-root))

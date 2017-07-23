@@ -1,115 +1,267 @@
 # [JS-Workshop](https://github.com/ClojureTO/JS-Workshop)
 
-## Before the Workshop
+## Re-framing the application
 
-Please make sure that you have a copy of the JDK and Leiningen build tool setup to follow along with the workshop.
-You can follow installation instructions in the links below:
+Now that we've seen how basic Reagent works, let's take a look at adding some structure to our code. Re-frame is a framework built on top of Reagent that helps manage the state of the application.
 
-* [JDK 1.8+](http://www.azul.com/downloads/zulu/)
-* [Leiningen](https://leiningen.org/)
+### Re-frame core concepts
 
-### Creating and running the project
+Re-frame uses a single atom to represent the state of the application. This atom is used internally by re-frame, and we don't interact with it directly. Instead, we use dispatchers to update the state of the atom, and subscriptions to observe it.
 
-Run the following commands to create a new project and run it to ensure that the setup was completed successfully:
+Essentially, re-frame follows the MVC approach to structuring the UI code. The model is modified using dispatchers, and the view observes it via subscriptions. Let's take a look at how this works in practice.
 
-    lein new reagent-frontend reddit-viewer
-    cd reddit-viewer
-    lein figwheel
+Our current version of the application uses Reagent reactive atoms to track the state of the data and update the UI components as the state of the data changes.
 
-If the project starts up successfully, then you should have a browser window open at `localhost:3449/index.html`.
+When using re-frame, we will dispatch events whenever we wish to update the state, and subscribe to changes in our components to observe the data. Let's take a look at what event handlers and subscriptions look like.
 
-## During the Workshop
+#### re-frame event handlers
 
-This is a comprehensive guide to the workshop itself, for those playing along from home!
+Event handlers are defined using the `re-frame.core/reg-event-db` function. The function accepts a keyword used to uniquely identify the event, and a function that will be triggered when the event is dispatched. Let's take a look at an example handler:
 
-We'll update project dependencies in `project.clj` to look as follows:
+```clojure
+(re-frame.core/reg-event-db
+ :set-value
+ (fn [db [event-id value]]
+   (assoc db :value value)))
+```
+
+We now have an handler associated with the `:set-value` event. The event handling function accepts two arguments. The first argument is the current state of the re-frame atom, and the second is the vector of arguments passed to the event. The first element of the arguments vector will be the event id, in this case `:set-value`, followed by zero or more optional arguments.
+
+Now that the event has been defined, let's take a look at how we dispatch it. This is done using the `re-frame.core/dispatch` function:
+
+```clojure
+(re-frame.core/dispatch [:set-value "some value"])
+```
+
+The above code will trigger the `:set-value` event, and the vector `[:set-value "some value"]` will be passed to the event handler function.
+
+ The function will associate the `:value` key in the `db` with the value that was passed in. In our case, the value will become the string `"some value"`.
+
+Now that we've seen how to create an event handler to update the re-frame database, let's take a look at how we can subscribe to views inside it.
+
+#### re-frame subscriptions
+
+Subscriptions are created using the `re-frame.core/reg-sub` function. This function has similar semantics to the `reg-event-db` function. Let's look at a concrete example of a subscription to a key in the re-frame atom below:
+
+```clojure
+(re-frame.core/reg-sub
+ :view-key
+ (fn [db [event-id k]]
+   (get db k)))
+```
+
+Once again, the function accepts an identifier followed by the handler function. The handler function accepts the current state of the atom, followed by a vector of arguments.
+
+To create a subscription to the `:value` key we set earlier, we use the `re-frame.core/subscribe` function:
+
+```clojure
+(re-frame.core/subscribe [:view-key :value])
+```
+
+The subscription returns a Reagent reaction that contains the computation for the subscription. This reaction will only be evaluated when the state of the database changes. In order to get the value from the reaction, we need to dereference it as we would with a Reagent atom:
+
+```clojure
+[:p @(re-frame.core/subscribe [:view-key :value])]
+```
+
+That's all we need to know about re-frame to update our application. We'rew now ready to take a look at how we can update the project to use it.
+
+### Adding re-frame dependency
+
+First thing we'll need to do is to add the re-frame dependency in the `project.clj` file:
 
 ```clojure
 :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
                  [org.clojure/clojurescript "1.9.671" :scope "provided"]
                  [reagent "0.7.0"]
+                 [re-frame "0.9.4"]
                  [cljsjs/chartjs "2.5.0-0"]
                  [cljs-ajax "0.6.0"]]
 ```
 
-Next, let's replace the generated CSS link with the Bootstrap CSS in the `public/index.html` file:
+Once that's done, we'll have to restart the application for the new dependency to be loaded.
 
-```xml
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
-</head>
+### Separating events from the UI
+
+Currently, the business logic of our application is mixed with the UI code in the `reddit-viewer.core` namespace. Let's start by identifying events in the code so that we can split them out. Our application has three main events in it:
+
+* load posts from Reddit
+* sort posts by comments or by score
+* select view to display post previews or the chart
+
+We'll now create a namespace called `reddit-viewer.events` in a file called `src/reddit_viewer/controllers.cljs`. The namespace declaration will look as follows:
+
+```clojure
+(ns reddit-viewer.controllers
+  (:require
+    [ajax.core :as ajax]
+    [re-frame.core :as rf]))
 ```
 
-start the project in development mode:
+### Adding events
 
-    lein figwheel
+We're now ready to add the first event handler. It will be used to initialized the re-frame atom when the application loads. This atom is typically referred to as the re-frame database.
 
-Leiningen will download the dependencies and start compiling the project, this can take a minute first time around.
-Once the project compilation finishes, a browser window will open at [http://localhost:3449/index.html](http://localhost:3449/index.html).
+```clojure
+(rf/reg-event-db
+  :initialize-db
+  (fn [_ _]
+    {:view     :posts
+     :sort-key :score}))
+```
 
-## Editing the project
+Since we're initializing the application, the handler function doesn't need use the arguments that are passed in. It simply returns a map representing the default state:
 
-Now that we have the project running, let's see how we can add some functionality to it.
-We'll open up the `reddit_viewer/core.cljs` file that has some initial boilerplate in it and see what it's doing.
+```clojure
+{:view     :posts
+ :sort-key :score}
+```
+
+#### Task 1: load posts
+
+Next, we'll create an event to populate the posts in the re-frame db:
+
+```clojure
+(defn find-posts-with-preview [posts]
+  (filter #(= (:post_hint %) "image") posts))
+
+(rf/reg-event-db
+  :set-posts
+  (fn [db [_ posts]]
+    (assoc db :posts
+              (->> (get-in posts [:data :children])
+                   (map :data)
+                   (find-posts-with-preview)))))
+```
+
+This is essentially the same code we used in the `load-posts` function earlier. The only difference is that instead of setting the value in the `posts` atom, we're now associating it as the `:posts` key on the re-frame db.
+
+Next, we'll write another function to do the Ajax call that will fetch the posts:
+
+```clojure
+(rf/reg-event-db
+  :load-posts
+  (fn [db _]
+    (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=50"
+              {:handler         #(rf/dispatch [:set-posts %])
+               :response-format :json
+               :keywords?       true})
+    db))
+```
+
+The `:load-posts` event will do the Ajax call, and dispatch to the `:set-posts` event in its handler when the data is ready. It returns the `db` state unmodified.
+
+>Exercise: modify the application to create a loading notification while the posts are being fetched.
+
+#### Task 2: sort posts
+
+The event to sort posts will accept a `sort-key` as its parameter and sort the posts using it:
+
+```clojure
+(rf/reg-event-db
+  :sort-posts
+  (fn [db [_ sort-key]]
+    (update db :posts (partial sort-by sort-key >))))
+```
+
+#### Task 3: select view
+
+Finally, we need an event to select the current view:
+
+```clojure
+(rf/reg-event-db
+  :select-view
+  (fn [db [_ view]]
+    (assoc db :view view)))
+```
+
+This event simply associates the `:view` key in the `db` with the value that we pass in.
+
+
+### Adding subscriptions
+
+This takes care of all the events needed for our application. We now need to add a couple of subscriptions to observe the state of the re-frame database:
+
+```clojure
+(rf/reg-sub
+  :view
+  (fn [db _]
+    (:view db)))
+
+(rf/reg-sub
+  :posts
+  (fn [db _]
+    (:posts db)))
+```
+
+This provides us with the ability to access the selected view and the collection of posts populated in the database.
+
+
+### Updating the UI
+
+With all that in place, let's navigate to the `reddit-viewer.core` namespace and update it to use the events we created. We'll update the namespace declaration to require the necessary namespaces:
 
 ```clojure
 (ns reddit-viewer.core
-    (:require
-      [reagent.core :as r]))
+  (:require
+    [ajax.core :as ajax]
+    [reagent.core :as r]
+    [reddit-viewer.chart :as chart]
+    [reddit-viewer.controllers]
+    [re-frame.core :as rf]))
+```
 
-;; -------------------------
-;; Views
+Next, we'll update the `init!` function to initialize the re-frame database on startup and to trigger the event for loading posts:
 
-(defn home-page []
-  [:div [:h2 "Welcome to Reagent"]])
-
-;; -------------------------
-;; Initialize app
-
-(defn mount-root []
-  (r/render [home-page] (.getElementById js/document "app")))
-
+```clojure
 (defn init! []
+  (rf/dispatch-sync [:initialize-db])
+  (rf/dispatch [:load-posts])
   (mount-root))
 ```
 
-The top section of the file contains a namespace declaration. The namespace requires the `reagent.core` namespace that's
-used to create the UI.
+Here, we're calling the `rf/dispatch-sync` function to trigger the `:initialize-db` event. This is a blocking version of re-frame dispatch that ensures that the event finishes before the next statement is called. This is necessary to ensure that the re-frame database is initialized before we start using it.
 
-The `home-page` function creates a Reagent component. The component contains a `div` with an `h2` tag inside it.
-
-Reagent uses Clojure literal notation for vectors and maps to represent HTML. The tag is defined using a vector, where the first element is the keyword representing the tag name, followed by an optional map of attributes, and the tag content.
-
-For example, `[:div [:h2 "Welcome to Reagent"]` maps to `<div><h2>Welcome to Reagent</h2></div>`. If we wanted to add `id` and `class` to the `div`, we could do that as follows: `[:div {:id "foo" :class "bar baz"} ...]`.
-
-Since setting the `id` and `class` attributes is a very common operation, Reagent provides a shortcut for doing that using syntax similar to CSS selectors: `[:div#foo.bar.baz ...]`.
-
-This component is rendered inside the DOM element with the ID `app`. This element is defined in the `public/index.html` file
-by the `mount-root` function.
-
-Finally, we have the `init!` function that serves as the entry point for the application.
-
-### Task 1: Loading data using Ajax and viewing it.
-
-Let's start by creating a container to hold the results:
+We'll update the `home-page` function to subscribe to the selected view using `@(rf/subscribe [:view])`, and we'll pass the subscription to the posts to the `dsiplay-posts` function: `[display-posts @(rf/subscribe [:posts])]`:
 
 ```clojure
-(defonce posts (r/atom nil))
+(defn home-page []
+  (let [view @(rf/subscribe [:view])]
+    [:div
+     [navbar view]
+     [:div.card>div.card-block
+      [:div.btn-group
+       [sort-posts "score" :score]
+       [sort-posts "comments" :num_comments]]
+      (case view
+        :chart [chart/chart-posts-by-votes]
+        :posts [display-posts @(rf/subscribe [:posts])])]]))
 ```
 
-The `atom` is a container for mutable data. We'll initialize it with a `nil` value.
-
-Next, we'll require the `ajax.core` namespace and add a couple of functions that will load posts from the `http://www.reddit.com/r/Catloaf.json?sort=new&limit=9` URL, filter out the ones with images,
-and save them in the `posts` atom:
+The `sort-posts` component will need to change as well since it will now be dispatching the event to set the sort key:
 
 ```clojure
-(ns reddit-viewer.core
-    (:require
-      [ajax.core :as ajax]
-      [reagent.core :as r]))
+(defn sort-posts [title sort-key]
+  [:button.btn.btn-secondary
+   {:on-click #(rf/dispatch [:sort-posts sort-key])}
+   (str "sort posts by " title)])
+```
 
+Finally, the `navitem` function will need to be updated to dispatch the `:select-view` event:
+
+```clojure
+(defn navitem [title view id]
+  [:li.nav-item
+   {:class-name (when (= id view) "active")}
+   [:a.nav-link
+    {:href     "#"
+     :on-click #(rf/dispatch [:select-view id])}
+    title]])
+```
+
+We can now remove the following code as it's no longer used:
+
+```clojure
 (defonce posts (r/atom nil))
 
 (defn find-posts-with-preview [posts]
@@ -125,169 +277,17 @@ and save them in the `posts` atom:
              :keywords?       true}))
 ```
 
-The `load-posts` function loads the JSON data and converts it to a Clojure data structure. We pass the `ajax/GET` function the URL and
-a map of options. The options contain the `:handler` key pointing to the function that should be called to handle the successful response,
-the `:response-format` key that hints that the response type is JSON, and `:keywords?` hint indicating that we would like to convert JSON
-string keys into Clojure keywords for maps.
+We now have clear separation between the logic in the `redditviewer.events` and the UI logic in the `reddit-viewer.core`.
 
-The original data has the following structure:
-
-```clojure
-{:data {:children [{:data {...}} ...]}}
-```
-
-The top level data structure is a map that contains a key called `:data`, this key points to a map that contains a key called
-`:children`. Finally, the `:children` key points to a collection of maps representing the posts. Each map, in turn, has a key
- called `:data` that contains the data for the post.
-
-Our `:handler` function grabs the collection of posts, and maps across them to get the `:data` key containing the information about
-each post. It then calls the `find-posts-with-preview` function to filter out posts without images. After we process the original response data, we reset the `posts` atom with the result.
-
-We can test our function in the Figwheel REPL by running the following commands:
-
-```clojure
-(in-ns 'reddit-viewer.core)
-(load-posts)
-(first @posts)
-```
-
-We should see the data contained in the first item in the collection of posts that was loaded.
-
-### Task 2: Rendering the data
-
-Each post map contains a `:url` key that points to an image. Let's write a component function to render the image from the first post that looks as follows:
-
-```clojure
-(defn display-post [{:keys [url]}]
-  (when url [:img {:src url}]))
-```
-
-When a Reagent component function returns `nil` it is omitted in the DOM, so the `display-posts` component will only be rendered when provided with a map containing a `:url` key that has a value.
-
-We can now parent this component under the `home-page` component:
-
-```clojure
-(defn home-page []
-  [:div [:h2 "Welcome to Reagent"]
-   [display-post (first @posts)]])
-```
-
-Note that we're putting the `display-post` component in a vector `[display-post]` as opposed to calling it as a function with `(display-post)`.
-
-This is a property of how the Reagent library works. The templates specify the structure of the page. Reagent
-then manages the lifecycle of the component functions, and decides when they need to be called based on the state of the data.
-
-If we called the function directly by writing `(display-post)`, then it would be executed a single time when the code is initialized, and
-it would not be repainted when the contents of `posts` atom change.
-
-By using the vector notation and writing `[display-post]`, we're telling Reagent where we would like to render the `display-post` component, and let it manage when to call it based on the state of the data.
-
-Reagent atoms are reactive meaning that any time the atom is dereferenced using the `@` notation, a listener is created. When the atom value changes, all the listeners are notified of the change, and the components are repainted.
-
-We can tests this by going to the REPL and clearing the `posts` atom:
-
-```clojure
-(reset! posts nil)
-```
-
-We can see that the image disappears on the page once the contents of the atom have been cleared. Let's run the `(load-posts)` function again:
-
-```clojure
-(load-posts)
-```
-
-We should be seeing the cat picture once again as the `display-post` component is repainted with new data.
-
-#### Working with HTML
-
-We've now seen that the data is being loaded, but it's not terribly nice to look at. Let's render it in a better way using Bootstrap CSS.
-We'll update the `display-post` component function as follows:
-
-```clojure
-(defn display-post [{:keys [permalink subreddit title score url]}]
-  [:div.card.m-2
-   [:div.card-block
-    [:h4.card-title
-     [:a {:href (str "http://reddit.com" permalink)} title " "]]
-    [:div [:span.badge.badge-info {:color "info"} subreddit " score " score]]
-    [:img {:width "300px" :src url}]]])
-```
-
-Now that we can render a single post nicely, let's write a function that will render a multiple posts:
-
- ```clojure
- (defn display-posts [posts]
-   (when-not (empty? posts)
-     [:div
-      (for [posts-row (partition-all 3 posts)]
-        ^{:key posts-row}
-        [:div.row
-         (for [post posts-row]
-           ^{:key post}
-           [:div.col-4 [display-post post]])])]))
-```
-
-The function will accept a collection of posts as its parameter. It will then check whether the collection is empty.
-
-When the `posts` are not empty, we'll partition them into groups of three.
-We'll create a Bootstrap row for each group and pass the posts in the row to the `display-post` function we wrote earlier.
-
-Note that we're using the `^{:key posts-row}` notation for dynamic collections elements. This provides Reagent with a unique identifier for each element to decide when to repaint it efficiently. If the key was omitted, then Reagent would repaint all elements whenever any of the elements need repainting.
-
-With that in place, we can update the `home-page` component to render the posts:
-
-```clojure
-(defn home-page []
-  [:div.card>div.card-block
-   [display-posts @posts]])
-```
-
-### Task 3: Manipulating the data
-
-We're able to load the posts, and have a UI for render them. Let's take a look at adding the ability to sort the posts, and see how the UI will track the changes for us.
-
- We'll add a `sort-posts` component function that looks as follows:
-
-```clojure
-(defn sort-posts [title sort-key]
-  (when-not (empty? @posts)
-    [:button.btn.btn-secondary
-     {:on-click #(swap! posts (partial sort-by sort-key))}
-     (str "sort posts by " title)]))
-```
-
-This function will check that the posts are not empty, and add a button to sort the posts by the specified key.
-
-Let's add a couple of buttons to the `home-page` that will allow us to sort posts by their score and comments:
-
-```clojure
-(defn home-page []
-  [:div.card>div.card-block
-   [:div.btn-group
-    [sort-posts "score" :score]
-    [sort-posts "comments" :num_comments]]
-   [display-posts @posts]])
-```
-
-Note that as we're updating the UI, we're retaining the state of the application. As new components are added, the `posts` atom state is retained. We can modify the way the UI looks without having to reload the application to see the changes.
-
-### Task 4: JavaScript interop
-
-So far we've been working exclusively with Reagent components. Now, let's take a look at using a plain JavaScript library that expects to manipulate the DOM directly.
-
-Let's create a new namespace called `reddit-viewer.chart` in the `src/reddit_viewer/chart.cljs` file to handle charting our data using the Chart.js library. The namespace declaration will look as follows:
-
+One last thing left to do is to update the `reddit-viewer.chart` namespace to subscribe to the posts:
 
 ```clojure
 (ns reddit-viewer.chart
   (:require
     [cljsjs.chartjs]
-    [reagent.core :as r]))
-```
+    [reagent.core :as r]
+    [re-frame.core :as rf]))
 
-Next, we'll write a function that calls Chart.js to render given data in a DOM node as a bar chart:
-
-```clojure
 (defn render-data [node data]
   (js/Chart.
     node
@@ -297,179 +297,26 @@ Next, we'll write a function that calls Chart.js to render given data in a DOM n
                  :datasets [{:label "votes"
                              :data  (map :score data)}]}
        :options {:scales {:xAxes [{:display false}]}}})))
-```
 
-The above code is equivalent to writing the following JavaScript:
-
-```
-new Chart(node
-          {type: "bar",
-           data: {
-                  labels: data.map(function(x) {return x.title}),
-                  datasets:
-                  [{
-                    label: "votes",
-                    data: data.map(function(x) {return x.ups})
-                   }]
-                  },
-           options: {
-                     scales: {xAxes: [{display: false}]}
-                    }
-           });
-```
-
-Now that we have the code to render the chart, we need to have access to a DOM node. Since Reagent is based on React, it uses a virtual DOM and renders components in the browser DOM as needed.
-
-So far we've been writing components as functions that return HTML elements. However, these functions only represent the render method of a React class.
-
-In order to get access to the DOM we have to implement other lifecycle functions that get called when the component is mounted, updated, and unmounted. This is achieved by calling the `create-class` function:
-
-```clojure
-(defn chart-posts-by-votes [data]
-  (let [chart (r/atom nil)]
-    (r/create-class
-      {:component-did-mount  (render-chart chart data)
-       :component-did-update (render-chart chart data)
-       :component-will-unmount (fn [_] (destroy-chart chart))
-       :render               (fn [] (when @data [:canvas]))})))
-```
-
-The function accepts a map keyed on the lifecycle events. Whenever each event occurs, the associated function will be called.
-
-We'll track the state of the chart using an atom. This will be necessary because we have to destroy the existing chart when component is unmounted.
-
-You can see that the `:render` key points to a function that will return the `:canvas` element when data is available.
-
-The `:component-did-mount` and `:component-did-update` keys point to the `render-chart` function that w'll write next:
-
-```clojure
-(defn render-chart [chart data]
-  (fn [component]
-    (when (not-empty @data)
-      (let [node (r/dom-node component)]
-        (destroy-chart chart)
-        (reset! chart (render-data node @data))))))
-```
-
-This function is a closure that returns a function that will receive the React component. The inner function will check if there's any data available, and if so, then it will grab the mounted DOM node by calling `r/dom-node` on the `component`. It will attempt to clear the existing chart by calling the `destroy-chart` function, and then create a new chart by calling the `render-data` function we wrote earlier.
-
-Finally, we'll implement the `destroy-chart` function as follows:
-
-```clojure
 (defn destroy-chart [chart]
   (when @chart
     (.destroy @chart)
     (reset! chart nil)))
+
+(defn render-chart [chart]
+  (fn [component]
+    (when-let [posts @(rf/subscribe [:posts])]
+      (destroy-chart chart)
+      (reset! chart (render-data (r/dom-node component) posts)))))
+
+(defn render-canvas []
+  (when @(rf/subscribe [:posts]) [:canvas]))
+
+(defn chart-posts-by-votes [data]
+  (let [chart (atom nil)]
+    (r/create-class
+      {:component-did-mount    (render-chart chart)
+       :component-did-update   (render-chart chart)
+       :component-will-unmount (fn [_] (destroy-chart chart))
+       :render                 render-canvas})))
 ```
-
-This function will check whether there's an existing chart present and call its `destroy` method. It will then reset the `chart` atom to a `nil` value.
-
-With that in place, we can navigate back to the `reddit-viewer.core` namespace, and require the `reddit-viewer.chart` namespace there:
-
-```clojure
-(ns reddit-viewer.core
-  (:require
-    [ajax.core :as ajax]
-    [reagent.core :as r]
-    [reddit-viewer.chart :as chart]))
-```
-
-We'll now update the `home-page` component to display the chart:
-
-```clojure
-(defn home-page []
-  [:div.card>div.card-block
-   [:div.btn-group
-    [sort-posts "score" :score]
-    [sort-posts "comments" :num_comments]]
-   [chart/chart-posts-by-votes posts]
-   [display-posts @posts]])
-```
-
-We should now see the chart rendered, and it should update when we change the sort order of our data using the `score` and `comment` sorting buttons.
-
-### Task 5: Managing local state within components
-
-As a final touch, let's add a navbar to separate the posts and the chart into separate views. We'll start by adding a `navitem` function that creates a navigation link given a title, an atom containing the currently selected view, and the id of the nav item:
-
-```clojure
-(defn navitem [title view id]
-  [:li.nav-item
-   {:class-name (when (= id @view) "active")}
-   [:a.nav-link
-    {:href     "#"
-     :on-click #(reset! view id)}
-    title]])
-```
-
-The component checks whether the current id in the view matches the item id in order to decide whether its class should be set to active. When it's clicked, the component will reset the `view` atom to its id.
-
-We can now create a Bootstrap navbar with links to posts and the chart:
-
-```clojure
-(defn navbar [view]
-  [:nav.navbar.navbar-toggleable-md.navbar-light.bg-faded
-   [:ul.navbar-nav.mr-auto.nav
-    {:className "navbar-nav mr-auto"}
-    [navitem "Posts" view :posts]
-    [navitem "Chart" view :chart]]])
-```
-
-Finally, we'll update the home page to use the `navbar` component. The home page will now need to track a local state to know what view it needs to display.
-This is accomplished by creating a local atom called `view`:
-
-```clojure
-(defn home-page []
-  (let [view (r/atom :posts)]
-    (fn []
-      [:div
-       [navbar view]
-       [:div.card>div.card-block
-        [:div.btn-group
-         [sort-posts "score" :score]
-         [sort-posts "comments" :num_comments]]
-        (case @view
-          :chart [chart/chart-posts-by-votes posts]
-          :posts [display-posts @posts])]])))
-```
-
-Notice that we return an anonymous function from inside the `let` statement. This is a Reagent mechanic for creating local state within components.
-
-If the inner function was not present, then the top level function would be called each time the component was repainted and the `let` statement would be reinitialized.
-
-When a component returns a function as the result, Reagent knows to call that function when subsequent calls to that component occur.
-
- Since this is a common operation, Reagent provides a helper macro called `with-let`. We can rewrite the above function using it as follows:
-
-```clojure
-(defn home-page []
-  (r/with-let [view (r/atom :posts)]
-    [:div
-     [navbar view]
-     [:div.card>div.card-block
-      [:div.btn-group
-       [sort-posts "score" :score]
-       [sort-posts "comments" :num_comments]]
-      (case @view
-        :chart [chart/chart-posts-by-votes posts]
-        :posts [display-posts @posts])]]))
-```
-
-That completes all the functionality we set out to add to our application. The only thing left to do is to compile it for production use.
-
-## Compiling for release
-
-So far we've been working with ClojureScript in development mode. This compilation method allows for fast incremental compilation and reloading. However, it generates very large JavaScript files.
-
-To use our app in production we'll want to use the advanced compilation method that will produce optimized JavaScript. This is accomplished by running the following command:
-
-    lein package
-
-This will produce a single minified JavaScript file called `public/js/app.js` that's ready for production use.
-
-## Libraries used in the project
-
-* [Chart.js](http://www.chartjs.org/) - used to generate the bar chart
-* [cljs-ajax](https://github.com/JulianBirch/cljs-ajax) - used to fetch data from Reddit
-* [Reagent](reagent-project.github.io) - ClojureScript interface for React
-
