@@ -457,6 +457,14 @@ When a component returns a function as the result, Reagent knows to call that fu
 
 That completes all the functionality we set out to add to our application. The only thing left to do is to compile it for production use.
 
+## Excercises
+
+* Add a loading dialog that will be displayed when images are being loaded
+* Add a button to select the number of posts to fetch
+* Add the ability to select what subreddit the images are loaded from
+* Add the ability to load posts from multiple subreddits
+* Add tabs to show posts by subreddit
+
 ## Compiling for release
 
 So far we've been working with ClojureScript in development mode. This compilation method allows for fast incremental compilation and reloading. However, it generates very large JavaScript files.
