@@ -1,5 +1,9 @@
 # [JS-Workshop](https://github.com/ClojureTO/JS-Workshop)
 
+# Part 2
+
+See [master branch](https://github.com/ClojureTO/JS-Workshop) for Part 1.
+
 ## Re-framing the application
 
 Now that we've seen how basic Reagent works, let's take a look at adding some structure to our code. Re-frame is a framework built on top of Reagent that helps manage the state of the application.
