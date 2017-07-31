@@ -1,5 +1,7 @@
 # [JS-Workshop](https://github.com/ClojureTO/JS-Workshop)
 
+# Part 1: Reagent
+
 ## Before the Workshop
 
 Please make sure that you have a copy of the JDK and Leiningen build tool setup to follow along with the workshop.
@@ -481,3 +483,4 @@ This will produce a single minified JavaScript file called `public/js/app.js` th
 * [cljs-ajax](https://github.com/JulianBirch/cljs-ajax) - used to fetch data from Reddit
 * [Reagent](reagent-project.github.io) - ClojureScript interface for React
 
+[Part 2: re-frame integration](https://github.com/ClojureTO/JS-Workshop/tree/re-frame)
