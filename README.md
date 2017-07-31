@@ -1,6 +1,6 @@
 # [JS-Workshop](https://github.com/ClojureTO/JS-Workshop)
 
-# Part 2
+# Part 2: re-frame
 
 See [master branch](https://github.com/ClojureTO/JS-Workshop) for Part 1.
 
