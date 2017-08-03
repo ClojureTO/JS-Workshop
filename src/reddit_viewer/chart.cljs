@@ -28,7 +28,7 @@
 (defn render-canvas []
   (when @(rf/subscribe [:posts]) [:canvas]))
 
-(defn chart-posts-by-votes [data]
+(defn chart-posts-by-votes []
   (let [chart (atom nil)]
     (r/create-class
       {:component-did-mount    (render-chart chart)
