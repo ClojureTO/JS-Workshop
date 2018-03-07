@@ -20,14 +20,18 @@
                    (map :data)
                    (find-posts-with-preview)))))
 
-(rf/reg-event-db
+(rf/reg-fx
+ :ajax-get
+ (fn [[url handler]]
+   (ajax/GET url
+             {:handler         handler
+              :response-format :json
+              :keywords?       true})))
+
+(rf/reg-event-fx
   :load-posts
-  (fn [db _]
-    (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=50"
-              {:handler         #(rf/dispatch [:set-posts %])
-               :response-format :json
-               :keywords?       true})
-    db))
+  (fn [_ [_ url]]
+    {:ajax-get [url #(rf/dispatch [:set-posts %])]}))
 
 (rf/reg-event-db
   :sort-posts
@@ -48,5 +52,3 @@
   :posts
   (fn [db _]
     (:posts db)))
-
-

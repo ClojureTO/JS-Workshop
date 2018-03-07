@@ -140,20 +140,29 @@ Next, we'll create an event to populate the posts in the re-frame db:
 
 This is essentially the same code we used in the `load-posts` function earlier. The only difference is that instead of setting the value in the `posts` atom, we're now associating it as the `:posts` key on the re-frame db.
 
-Next, we'll write another function to do the Ajax call that will fetch the posts:
+Next, we'll create an event to do the Ajax call that will load the posts. This action requires a side effect that will asynchronously call the remote service to fetch the data.
+It's good practice to distinguish between actions that modify the state of the re-frame database and those that trigger side effects. The mechanism that re-frame provides for this is the
+[effectful handler](https://github.com/Day8/re-frame/blob/master/docs/EffectfulHandlers.md). We'll register an effect for doing Ajax calls with `reg-fx`, and an event to trigger it with
+`reg-event-fx` as seen below:
 
 ```clojure
-(rf/reg-event-db
+(rf/reg-fx
+ :ajax-get
+ (fn [[url handler]]
+   (ajax/GET url
+             {:handler         handler
+              :response-format :json
+              :keywords?       true})))
+
+(rf/reg-event-fx
   :load-posts
-  (fn [db _]
-    (ajax/GET "http://www.reddit.com/r/Catloaf.json?sort=new&limit=50"
-              {:handler         #(rf/dispatch [:set-posts %])
-               :response-format :json
-               :keywords?       true})
-    db))
+  (fn [_ [_ url]]
+    {:ajax-get [url #(rf/dispatch [:set-posts %])]}))
 ```
 
-The `:load-posts` event will do the Ajax call, and dispatch to the `:set-posts` event in its handler when the data is ready. It returns the `db` state unmodified.
+The `:load-posts` event returns a map where the keys point to the effects and the values represent their parameters.
+In this case we're dispatching a single effect that will call the specified URL via Ajax and run the handler function when it receives the response.
+The handler function will dispatch the `:set-posts` event to set the post data in the database.
 
 >Exercise: modify the application to create a loading notification while the posts are being fetched.
 
@@ -220,7 +229,7 @@ Next, we'll update the `init!` function to initialize the re-frame database on s
 ```clojure
 (defn init! []
   (rf/dispatch-sync [:initialize-db])
-  (rf/dispatch [:load-posts])
+  (rf/dispatch [:load-posts "http://www.reddit.com/r/Catloaf.json?sort=new&limit=50"])
   (mount-root))
 ```
 

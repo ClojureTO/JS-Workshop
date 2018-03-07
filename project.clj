@@ -7,7 +7,7 @@
   :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
                  [org.clojure/clojurescript "1.9.671" :scope "provided"]
                  [reagent "0.7.0"]
-                 [re-frame "0.9.4"]
+                 [re-frame "0.10.5"]
                  [cljsjs/chartjs "2.5.0-0"]
                  [cljs-ajax "0.6.0"]]
 

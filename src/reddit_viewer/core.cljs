@@ -68,5 +68,5 @@
 
 (defn init! []
   (rf/dispatch-sync [:initialize-db])
-  (rf/dispatch [:load-posts])
+  (rf/dispatch [:load-posts "http://www.reddit.com/r/Catloaf.json?sort=new&limit=50"])
   (mount-root))
