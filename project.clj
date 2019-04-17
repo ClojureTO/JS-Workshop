@@ -3,15 +3,15 @@
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
+  
+  :dependencies [[org.clojure/clojure "1.10.0" :scope "provided"]
+                 [org.clojure/clojurescript "1.10.520" :scope "provided"]
+                 [reagent "0.8.1"]
+                 [cljsjs/chartjs "2.7.3-0"]
+                 [cljs-ajax "0.8.0"]]
 
-  :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
-                 [org.clojure/clojurescript "1.9.671" :scope "provided"]
-                 [reagent "0.7.0"]
-                 [cljsjs/chartjs "2.5.0-0"]
-                 [cljs-ajax "0.6.0"]]
-
-  :plugins [[lein-cljsbuild "1.1.5"]
-            [lein-figwheel "0.5.11"]]
+  :plugins [[lein-cljsbuild "1.1.7"]
+            [lein-figwheel "0.5.18"]]
 
   :min-lein-version "2.5.0"
   :source-paths ["src"]
@@ -51,7 +51,7 @@
 
   :aliases {"package" ["do" "clean" ["cljsbuild" "once" "release"]]}
 
-  :profiles {:dev {:dependencies [[binaryage/devtools "0.9.4"]
-                                  [figwheel-sidecar "0.5.11"]
-                                  [org.clojure/tools.nrepl "0.2.13"]
-                                  [com.cemerick/piggieback "0.2.2"]]}})
+  :profiles {:dev {:dependencies [[binaryage/devtools "0.9.10"]
+                                  [figwheel-sidecar "0.5.18"]
+                                  [nrepl "0.6.0"]
+                                  [cider/piggieback "0.4.0"]]}})
