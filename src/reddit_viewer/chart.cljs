@@ -1,10 +1,10 @@
 (ns reddit-viewer.chart
   (:require
-    [cljsjs.chartjs]
+    ["chart.js" :as chartjs]
     [reagent.core :as r]))
 
 (defn render-data [node data]
-  (js/Chart.
+  (chartjs/Chart.
     node
     (clj->js
       {:type    "bar"

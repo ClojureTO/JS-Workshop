@@ -9,14 +9,17 @@ You can follow installation instructions in the links below:
 
 * [JDK 1.8+](http://www.azul.com/downloads/zulu/)
 * [Leiningen](https://leiningen.org/)
+* [NPM](https://www.npmjs.com/)
 
 ### Creating and running the project
 
 Run the following commands to create a new project and run it to ensure that the setup was completed successfully:
 
-    lein new reagent-frontend reddit-viewer
+    lein new reagent-frontend reddit-viewer +shadow-cljs
     cd reddit-viewer
-    lein figwheel
+    npm install
+    npx shadow-cljs watch app
+    
 
 If the project starts up successfully, then you should have a browser window open at `localhost:3449/index.html`.
 
@@ -24,14 +27,23 @@ If the project starts up successfully, then you should have a browser window ope
 
 This is a comprehensive guide to the workshop itself, for those playing along from home!
 
-We'll update project dependencies in `project.clj` to look as follows:
+We'll update project dependencies in `shadow-cljs.edn` to look as follows:
 
 ```clojure
-:dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
-                 [org.clojure/clojurescript "1.9.671" :scope "provided"]
-                 [reagent "0.7.0"]
-                 [cljsjs/chartjs "2.5.0-0"]
-                 [cljs-ajax "0.6.0"]]
+:dependencies [[nrepl "0.6.0"]
+               [reagent "0.8.1"]
+               [cljs-ajax "0.8.0"]]
+```
+
+We'll also add the `chart.js` NPM module in the `package.json` file. Shadow-cljs uses NPM directly to track NPM modules separately from ClojureScript dependencies that are defined in the `shadow-cljs.edn` configuration file.
+
+```javascript
+"dependencies": {
+    "create-react-class": "^15.6.3",
+    "react": "^16.4.0",
+    "react-dom": "^16.4.0",
+    "chart.js": "2.7.3"
+}
 ```
 
 Next, let's replace the generated CSS link with the Bootstrap CSS in the `public/index.html` file:
@@ -46,7 +58,7 @@ Next, let's replace the generated CSS link with the Bootstrap CSS in the `public
 
 start the project in development mode:
 
-    lein figwheel
+    npx shadow-cljs watch app
 
 Leiningen will download the dependencies and start compiling the project, this can take a minute first time around.
 Once the project compilation finishes, a browser window will open at [http://localhost:3449/index.html](http://localhost:3449/index.html).
@@ -75,6 +87,8 @@ We'll open up the `reddit_viewer/core.cljs` file that has some initial boilerpla
 
 (defn init! []
   (mount-root))
+
+(init!)
 ```
 
 The top section of the file contains a namespace declaration. The namespace requires the `reagent.core` namespace that's
@@ -283,7 +297,7 @@ Let's create a new namespace called `reddit-viewer.chart` in the `src/reddit_vie
 ```clojure
 (ns reddit-viewer.chart
   (:require
-    [cljsjs.chartjs]
+    ["chart.js" :as chartjs]
     [reagent.core :as r]))
 ```
 
@@ -291,7 +305,7 @@ Next, we'll write a function that calls Chart.js to render given data in a DOM n
 
 ```clojure
 (defn render-data [node data]
-  (js/Chart.
+  (chartjs/Chart.
     node
     (clj->js
       {:type    "bar"
@@ -473,7 +487,7 @@ So far we've been working with ClojureScript in development mode. This compilati
 
 To use our app in production we'll want to use the advanced compilation method that will produce optimized JavaScript. This is accomplished by running the following command:
 
-    lein package
+    npx shadow-cljs release app
 
 This will produce a single minified JavaScript file called `public/js/app.js` that's ready for production use.
 

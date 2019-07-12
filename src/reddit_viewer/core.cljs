@@ -80,5 +80,8 @@
   (r/render [home-page] (.getElementById js/document "app")))
 
 (defn init! []
+  (enable-console-print!)
   (mount-root)
   (load-posts))
+
+(init!)
