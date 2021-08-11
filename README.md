@@ -477,11 +477,11 @@ To use our app in production we'll want to use the advanced compilation method t
 
 This will produce a single minified JavaScript file called `public/js/app.js` that's ready for production use.
 
+## [Part 2: re-frame integration](https://github.com/ClojureTO/JS-Workshop/tree/re-frame)
+
 ## Libraries used in the project
 
 * [Chart.js](http://www.chartjs.org/) - used to generate the bar chart
 * [cljs-ajax](https://github.com/JulianBirch/cljs-ajax) - used to fetch data from Reddit
 * [Reagent](reagent-project.github.io) - ClojureScript interface for React
-
 * [shadow-cljs compiler](https://github.com/ClojureTO/JS-Workshop/tree/shadow-cljs)
-* [Part 2: re-frame integration](https://github.com/ClojureTO/JS-Workshop/tree/re-frame)
