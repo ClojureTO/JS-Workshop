@@ -10,11 +10,13 @@ You can follow installation instructions in the links below:
 * [JDK 1.8+](http://www.azul.com/downloads/zulu/)
 * [Leiningen](https://leiningen.org/)
 
+To compile our ClojureScript code we will use [figwheel](https://figwheel.org/). If you want to use [shadow-cljs](https://github.com/thheller/shadow-cljs) you should follow along with [this](https://github.com/ClojureTO/JS-Workshop/tree/shadow-cljs) version of the workshop.
+
 ### Creating and running the project
 
 Run the following commands to create a new project and run it to ensure that the setup was completed successfully:
 
-    lein new reagent-frontend reddit-viewer
+    lein new reagent-frontend reddit-viewer +figwheel
     cd reddit-viewer
     lein figwheel
 
@@ -484,4 +486,3 @@ This will produce a single minified JavaScript file called `public/js/app.js` th
 * [Chart.js](http://www.chartjs.org/) - used to generate the bar chart
 * [cljs-ajax](https://github.com/JulianBirch/cljs-ajax) - used to fetch data from Reddit
 * [Reagent](reagent-project.github.io) - ClojureScript interface for React
-* [shadow-cljs compiler](https://github.com/ClojureTO/JS-Workshop/tree/shadow-cljs)
