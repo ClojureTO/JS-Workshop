@@ -485,4 +485,4 @@ This will produce a single minified JavaScript file called `public/js/app.js` th
 
 * [Chart.js](http://www.chartjs.org/) - used to generate the bar chart
 * [cljs-ajax](https://github.com/JulianBirch/cljs-ajax) - used to fetch data from Reddit
-* [Reagent](reagent-project.github.io) - ClojureScript interface for React
+* [Reagent](https://reagent-project.github.io/) - ClojureScript interface for React
